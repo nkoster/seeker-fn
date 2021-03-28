@@ -1,0 +1,17 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  seeker:
+    lang: node12
+    handler: ./seeker
+    image: nielskoster/seeker:latest
+    environment:
+      exec_timeout: 3600s
+      write_timeout: 3m
+      read_timeout: 3m
+      handler_wait_duration: 60s
+configuration:
+  copy:
+    - ./tls
