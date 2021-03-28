@@ -19,10 +19,7 @@ const config = {
 
 const { Client } = require('pg')
 const client = new Client(config)
-
-// console.log(client)
-
-// const pidKiller = new Client(config)
+const pidKiller = new Client(config)
 
 const LIMIT = process.env.SQLLIMIT || 51
 
@@ -41,41 +38,36 @@ LIMIT ${LIMIT}
 `
 }
 
-// const sqlKillQuery = queryId => {
-//   return `
-// WITH pids AS (
-//   /*notthisone*/
-//   SELECT pid
-//   FROM   pg_stat_activity
-//   WHERE  query LIKE '%/*${queryId}*/%'
-//   AND    query NOT LIKE '%/*notthisone*/%'
-//   AND    state='active'
-// )
-// SELECT pg_cancel_backend(pid) FROM pids;
-// `
-// }
+const sqlKillQuery = queryId => {
+  return `
+WITH pids AS (
+  /*notthisone*/
+  SELECT pid
+  FROM   pg_stat_activity
+  WHERE  query LIKE '%/*${queryId}*/%'
+  AND    query NOT LIKE '%/*notthisone*/%'
+  AND    state='active'
+)
+SELECT pg_cancel_backend(pid) FROM pids;
+`
+}
 
 module.exports = async (event, context) => {
 
   let data
 
-  const result = {
-    body: event,
-    'content-type': event.headers["content-type"]
-  }
   const body = event.body
-
-//   console.log('EVENT', result.body)
 
   try {
     await client.connect()
-    // await pidKiller.connect()
+    await pidKiller.connect()
   } catch(err) {
     DEBUG && console.log(err.message)
   }
 
   const queryId = body.queryId
   DEBUG && console.log('queryId:', queryId)
+
   const query = {
     name: queryId,
     text: sqlSelectQuery(queryId),
@@ -87,20 +79,13 @@ module.exports = async (event, context) => {
     ]
   }
 
-  // process.stdout.write(JSON.stringify(query))
-//   try {
-//     await pidKiller.query(sqlKillQuery(queryId))
-//   } catch (err) {
-//     DEBUG && console.log(err.message)
-//   }
+  try {
+    await pidKiller.query(sqlKillQuery(queryId))
+  } catch (err) {
+    DEBUG && console.log(err.message)
+  }
   try {
     data = await client.query(query)
-    // res.setHeader('Content-Type', 'application/json')
-    // if (DEVDELAY > 0)
-    //   setTimeout(_ => res.send(JSON.stringify(data.rows)), DEVDELAY)
-    // else
-    //   res.send(JSON.stringify(data.rows))
-    // client.disconnect()
     DEBUG && console.log('rows:', data.rows.length)
   } catch (err) {
     DEBUG && console.log(err.message)
@@ -110,9 +95,9 @@ module.exports = async (event, context) => {
     .headers(
       {
         'Content-type': 'application/json',
-        "Access-Control-Allow-Origin": "https://ui.fhirstation.net"
+        // 'Access-Control-Allow-Origin': 'https://ui.fhirstation.net/'
       }
     )
     .status(200)
-    .succeed(JSON.stringify(data.rows))
+    .succeed(JSON.stringify(data ? data.rows : []))
 }
