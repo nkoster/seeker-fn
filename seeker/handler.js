@@ -17,9 +17,9 @@ const config = {
   }
 }
 
-const { Client } = require('pg')
-const client = new Client(config)
-const pidKiller = new Client(config)
+const { Pool } = require('pg')
+const client = new Pool(config)
+const pidKiller = new Pool(config)
 
 const LIMIT = process.env.SQLLIMIT || 51
 
@@ -92,12 +92,7 @@ module.exports = async (event, context) => {
   }
 
   return context
-    .headers(
-      {
-        'Content-type': 'application/json',
-        // 'Access-Control-Allow-Origin': 'https://ui.fhirstation.net/'
-      }
-    )
+    .headers({ 'Content-type': 'application/json' })
     .status(200)
     .succeed(JSON.stringify(data ? data.rows : []))
 }
