@@ -18,8 +18,8 @@ const config = {
 }
 
 const { Pool } = require('pg')
-const client = new Pool(config)
-const pidKiller = new Pool(config)
+const clientPool = new Pool(config)
+const pidKillerPool = new Pool(config)
 
 const LIMIT = process.env.SQLLIMIT || 51
 
@@ -58,13 +58,6 @@ module.exports = async (event, context) => {
 
   const body = event.body
 
-  try {
-    await client.connect()
-    await pidKiller.connect()
-  } catch(err) {
-    DEBUG && console.log(err.message)
-  }
-
   const queryId = body.queryId
   DEBUG && console.log('queryId:', queryId)
 
@@ -79,16 +72,24 @@ module.exports = async (event, context) => {
     ]
   }
 
+  const client = await clientPool.connect()
+  const pidKiller = await pidKillerPool.connect()
+
   try {
     await pidKiller.query(sqlKillQuery(queryId))
   } catch (err) {
     DEBUG && console.log(err.message)
+  } finally {
+    pidKiller.release()
   }
+
   try {
     data = await client.query(query)
     DEBUG && console.log('rows:', data.rows.length)
   } catch (err) {
     DEBUG && console.log(err.message)
+  } finally {
+    client.release()
   }
 
   return context
