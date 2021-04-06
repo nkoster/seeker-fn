@@ -1,17 +1,20 @@
 'use strict'
 
 const DEBUG = true
-const { Kafka } = require('kafkajs')
-const fs = require('fs')
 
-const kafka = new Kafka({
-  clientId: 'offsetter',
-  brokers: ['pvdevkafka01:9092']
-})
-
-const consumer = kafka.consumer({ groupId: 'offsetter' })
+// const consumer = kafka.consumer({ groupId: 'offsetter' + Math.random().toString(20).substr(2) })
 
 module.exports = async (event, context) => {
+
+  const { Kafka } = require('kafkajs')
+  const fs = require('fs')
+
+  const kafka = new Kafka({
+    clientId: 'offsetter',
+    brokers: ['pvdevkafka01:9092']
+  })
+
+  const consumer = kafka.consumer({ groupId: Math.random().toString(20).substr(2) })
 
   const {topic, offset} = event.body
 
@@ -85,6 +88,7 @@ module.exports = async (event, context) => {
   }
 
   await new Promise(resolve => setTimeout(resolve, 1000))
+  await consumer.disconnect()
   return context
     .headers({ 'Content-type': 'application/json' })
     .status(200)
