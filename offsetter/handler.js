@@ -15,7 +15,7 @@ module.exports = async (event, context) => {
 
   const {topic, offset} = event.body
 
-  console.log('AAAAAP', topic, offset)
+  DEBUG && console.log('TOPIC OFFSET', topic, offset)
 
   try {
     await consumer.disconnect()
@@ -63,35 +63,30 @@ module.exports = async (event, context) => {
           }
           partition = batch.partition
           DEBUG && console.log('OFFSET', kafkaMessage)
-          // if (topic) return context.status(200).succeed(JSON.stringify(kafkaMessage))
           fs.writeFileSync('/tmp/k', JSON.stringify(kafkaMessage))
           console.log('TEST WRITE', JSON.parse(fs.readFileSync('/tmp/k', 'utf8')))
           consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
           consumer.disconnect()
           break
         }
-        // return kafkaMessage
-        // context.status(200).succeed(JSON.stringify(kafkaMessage))
       }
     })
     consumer.seek({ topic, partition, offset })
-    // consumer.disconnect()
   } catch(err) {
     console.log(err.message)
-    // return context.status(200).succeed(JSON.stringify({ 'error': err.message }))
   }
-  // try {
-  //   await consumer.disconnect()
-  // }  catch (err) {
-  //   console.log(err.message)
-  // }
+
   try {
     result = fs.readFileSync('/tmp/k', 'utf8')
   } catch (err) {
     console.log(err.message)
   } finally {
-    console.log('RRESULTT', result)
+    DEBUG && console.log('RESULT', result)
   }
+
   await new Promise(resolve => setTimeout(resolve, 1000))
-  return context.status(200).succeed(JSON.parse(fs.readFileSync('/tmp/k', 'utf8')))
+  return context
+    .headers({ 'Content-type': 'application/json' })
+    .status(200)
+    .succeed(JSON.parse(fs.readFileSync('/tmp/k', 'utf8')))
 }
