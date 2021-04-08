@@ -6,6 +6,9 @@ const DEBUG = true
 
 module.exports = async (event, context) => {
 
+  const groupId = Math.random().toString(20).substr(2)
+  const tmpFile = '/tmp/' + groupId
+
   const { Kafka } = require('kafkajs')
   const fs = require('fs')
 
@@ -14,7 +17,7 @@ module.exports = async (event, context) => {
     brokers: ['pvdevkafka01:9092']
   })
 
-  const consumer = kafka.consumer({ groupId: Math.random().toString(20).substr(2) })
+  const consumer = kafka.consumer({ groupId })
 
   const {topic, offset} = event.body
 
@@ -35,16 +38,15 @@ module.exports = async (event, context) => {
   } catch(err) {
     console.log(err)
   }
-  let kafkaMessage = {}
-  let partition = 0
 
   let result = ''
 
-  fs.open('/tmp/k', 'w', err => {
+  fs.open(tmpFile, 'w', err => {
     if (err) throw err
   })
 
   try {
+    let partition = 0
     await consumer.run({
       autoCommit: false,
       eachBatchAutoResolve: true,
@@ -52,6 +54,8 @@ module.exports = async (event, context) => {
         if (isStale()) {
           return
         }
+        console.log('PARTITION:', batch.partition)
+        let kafkaMessage = {}
         for (let message of batch.messages) {
           kafkaMessage = {
             topic: batch.topic,
@@ -65,22 +69,24 @@ module.exports = async (event, context) => {
             }
           }
           partition = batch.partition
-          DEBUG && console.log('OFFSET', kafkaMessage)
-          fs.writeFileSync('/tmp/k', JSON.stringify(kafkaMessage))
-          console.log('TEST WRITE', JSON.parse(fs.readFileSync('/tmp/k', 'utf8')))
-          consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
-          consumer.disconnect()
-          break
+          if (offset === message.offset) {
+            DEBUG && console.log('MESSAGE:', kafkaMessage)
+            fs.writeFileSync(tmpFile, JSON.stringify(kafkaMessage))
+            consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
+            consumer.disconnect()
+            break
+          }
         }
       }
     })
+    // const { partition } = JSON.parse(fs.readFileSync(tmpFile, 'utf8'))
     consumer.seek({ topic, partition, offset })
   } catch(err) {
     console.log(err.message)
   }
 
   try {
-    result = fs.readFileSync('/tmp/k', 'utf8')
+    result = fs.readFileSync(tmpFile, 'utf8')
   } catch (err) {
     console.log(err.message)
   } finally {
@@ -92,5 +98,5 @@ module.exports = async (event, context) => {
   return context
     .headers({ 'Content-type': 'application/json' })
     .status(200)
-    .succeed(JSON.parse(fs.readFileSync('/tmp/k', 'utf8')))
+    .succeed(JSON.parse(fs.readFileSync(tmpFile, 'utf8')))
 }
