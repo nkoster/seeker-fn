@@ -25,9 +25,9 @@ const LIMIT = process.env.SQLLIMIT || 51
 
 const sqlSelectQuery = queryId => {
   return `
-SELECT kafka_topic, kafka_offset, identifier_type, identifier_value
+SELECT kafka_topic, kafka_partition, kafka_offset, identifier_type, identifier_value
 /*${queryId}*/
-FROM dist_identifier_20210312
+FROM dist_identifier_20210408
 -- FROM identifier_20210311
 WHERE ($1 = '' OR kafka_topic ilike $1)
 AND   ($2 = '' OR identifier_type ilike $2)
