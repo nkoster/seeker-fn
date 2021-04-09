@@ -86,7 +86,7 @@ module.exports = async (event, context) => {
     let result
     try {
       result = client.query(query)
-      DEBUG && console.log('rows:', data.rows.length)
+      DEBUG && console.log('rows:', data.rows)
     } catch (err) {
       reject({ rows: [] })
       DEBUG && console.log(err.message)
