@@ -83,14 +83,17 @@ module.exports = async (event, context) => {
     pidKiller.release()
   }
 
-  try {
-    data = await client.query(query)
-    DEBUG && console.log('rows:', data.rows.length)
-  } catch (err) {
-    DEBUG && console.log(err.message)
-  } finally {
-    client.release()
-  }
+  data = await new Promise((resolve, reject) => {
+    try {
+      resolve(client.query(query))
+      DEBUG && console.log('rows:', data.rows.length)
+    } catch (err) {
+      reject(err)
+      DEBUG && console.log(err.message)
+    } finally {
+      client.release()
+    }    
+  })
 
   return context
     .headers({ 'Content-type': 'application/json' })
