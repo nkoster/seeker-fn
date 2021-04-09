@@ -19,9 +19,9 @@ module.exports = async (event, context) => {
 
   const consumer = kafka.consumer({ groupId })
 
-  const {topic, offset} = event.body
+  const {topic, offset, partition} = event.body
 
-  DEBUG && console.log('TOPIC OFFSET', topic, offset)
+  DEBUG && console.log('TOPIC OFFSET PARTITION', topic, offset, partition)
 
   try {
     await consumer.disconnect()
@@ -46,7 +46,6 @@ module.exports = async (event, context) => {
   })
 
   try {
-    let partition = 0
     await consumer.run({
       autoCommit: false,
       eachBatchAutoResolve: true,
@@ -68,7 +67,6 @@ module.exports = async (event, context) => {
               headers: message.headers
             }
           }
-          partition = batch.partition
           if (offset === message.offset) {
             DEBUG && console.log('MESSAGE:', kafkaMessage)
             fs.writeFileSync(tmpFile, JSON.stringify(kafkaMessage))
@@ -79,7 +77,6 @@ module.exports = async (event, context) => {
         }
       }
     })
-    // const { partition } = JSON.parse(fs.readFileSync(tmpFile, 'utf8'))
     consumer.seek({ topic, partition, offset })
   } catch(err) {
     console.log(err.message)
@@ -93,7 +90,7 @@ module.exports = async (event, context) => {
     DEBUG && console.log('RESULT', result)
   }
 
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise(resolve => setTimeout(resolve, 500))
   await consumer.disconnect()
   return context
     .headers({ 'Content-type': 'application/json' })
