@@ -2,7 +2,7 @@
 
 module.exports = async (event, context) => {
 
-  const DEBUG = false
+  const DEBUG = true
   const fs = require('fs')
   
   const config = {
@@ -74,27 +74,32 @@ module.exports = async (event, context) => {
   const client = await clientPool.connect()
   const pidKiller = await pidKillerPool.connect()
 
-  try {
-    await pidKiller.query(sqlKillQuery(queryId))
-  } catch (err) {
-    DEBUG && console.log(err.message)
-  } finally {
-    pidKiller.release()
-  }
+  /*
+  I have disabled the "previous query killer" below, since this
+  does not seem to work nicely within a function as a service.
+  */
+  // try {
+  //   await pidKiller.query(sqlKillQuery(queryId))
+  // } catch (err) {
+  //   DEBUG && console.log(err.message)
+  // } finally {
+  //   pidKiller.release()
+  // }
 
   data = await new Promise((resolve, reject) => {
     let result
     try {
       result = client.query(query)
-      DEBUG && console.log('rows:', data.rows)
     } catch (err) {
-      reject({ rows: [] })
-      DEBUG && console.log(err.message)
+      reject([])
+      console.log(err.message)
     } finally {
       resolve(result)
-      client.release()
+      // client.release()
     }    
   })
+
+  DEBUG && console.log('rows:', data.rows.length)
 
   return context
     .headers({ 'Content-type': 'application/json' })
