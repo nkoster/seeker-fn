@@ -22,8 +22,6 @@ module.exports = async (event, context) => {
   const clientPool = new Pool(config)
   const pidKillerPool = new Pool(config)
   
-  const LIMIT = process.env.SQLLIMIT || 51
-  
   const sqlSelectQuery = queryId => {
     return `
   SELECT /*${queryId}*/
@@ -63,11 +61,9 @@ module.exports = async (event, context) => {
       body.search.queryKafkaTopic,
       body.search.queryIdentifierType,
       body.search.queryIdentifierValue,
-      parseInt(body.search.queryKafkaOffset) ? parseInt(body.search.queryKafkaOffset) : null
+      body.search.queryKafkaOffset ? parseInt(body.search.queryKafkaOffset) : null
     ]
   }
-
-  console.log('offset', typeof body.search.queryKafkaOffset)
 
   const client = await clientPool.connect()
   const pidKiller = await pidKillerPool.connect()
