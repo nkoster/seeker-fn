@@ -57,7 +57,7 @@ module.exports = async (event, context) => {
 
   const body = event.body
 
-  const queryId = body.queryId
+  const {queryId} = body
   DEBUG && console.log('queryId:', queryId)
 
   const query = {
@@ -74,28 +74,26 @@ module.exports = async (event, context) => {
   const client = await clientPool.connect()
   const pidKiller = await pidKillerPool.connect()
 
-  /*
-  I have disabled the "previous query killer" below, since this
-  does not seem to work nicely within a function as a service.
-  */
-  // try {
-  //   await pidKiller.query(sqlKillQuery(queryId))
-  // } catch (err) {
-  //   DEBUG && console.log(err.message)
-  // } finally {
-  //   pidKiller.release()
-  // }
+  if (prevQueryId) {
+    try {
+      client.query(sqlKillQuery(prevQueryId))
+    } catch (err) {
+      DEBUG && console.log(err.message)
+    } finally {
+      pidKiller.release()
+    }  
+  }
 
-  data = await new Promise((resolve, reject) => {
+  data = await new Promise(async (resolve, reject) => {
     let result
     try {
-      result = client.query(query)
+      result = await client.query(query)
     } catch (err) {
-      reject([])
-      console.log(err.message)
+      reject( { rows: [] } )
+      console.log(err)
     } finally {
       resolve(result)
-      // client.release()
+      client.release()
     }    
   })
 
