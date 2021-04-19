@@ -74,14 +74,12 @@ module.exports = async (event, context) => {
   const client = await clientPool.connect()
   const pidKiller = await pidKillerPool.connect()
 
-  if (prevQueryId) {
-    try {
-      client.query(sqlKillQuery(prevQueryId))
-    } catch (err) {
-      DEBUG && console.log(err.message)
-    } finally {
-      pidKiller.release()
-    }  
+  try {
+    await client.query(sqlKillQuery(queryId))
+  } catch (err) {
+    DEBUG && console.log(err.message)
+  } finally {
+    pidKiller.release()
   }
 
   data = await new Promise(async (resolve, reject) => {
@@ -90,7 +88,7 @@ module.exports = async (event, context) => {
       result = await client.query(query)
     } catch (err) {
       reject( { rows: [] } )
-      console.log(err)
+      console.log(err.message)
     } finally {
       resolve(result)
       client.release()
