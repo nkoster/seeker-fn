@@ -26,16 +26,12 @@ module.exports = async (event, context) => {
   
   const sqlSelectQuery = queryId => {
     return `
-  SELECT kafka_topic, kafka_partition, kafka_offset, identifier_type, identifier_value
-  /*${queryId}*/
-  FROM dist_identifier_20210408
-  -- FROM identifier_20210311
-  WHERE ($1 = '' OR kafka_topic ilike $1)
-  AND   ($2 = '' OR identifier_type ilike $2)
-  AND   ($3 = '' OR identifier_value ilike $3)
-  AND   RIGHT('0000000000' || CAST(kafka_offset AS VARCHAR(10)), 10) like $4
-  ORDER BY kafka_offset DESC
-  LIMIT ${LIMIT}
+  SELECT /*${queryId}*/
+    * from func_identifier(in_identifier_value => $3,
+    in_identifier_type => $2,
+    in_kafka_topic => $1 ,
+    in_kafka_offset => $4,
+    in_kafka_partition => null)
   `
   }
   
@@ -64,12 +60,14 @@ module.exports = async (event, context) => {
     name: queryId,
     text: sqlSelectQuery(queryId),
     values: [
-      `%${body.search.queryKafkaTopic}%`,
-      `%${body.search.queryIdentifierType}%`,
-      `%${body.search.queryIdentifierValue}%`,
-      `%${body.search.queryKafkaOffset}%`
+      body.search.queryKafkaTopic,
+      body.search.queryIdentifierType,
+      body.search.queryIdentifierValue,
+      parseInt(body.search.queryKafkaOffset) ? parseInt(body.search.queryKafkaOffset) : null
     ]
   }
+
+  console.log('offset', typeof body.search.queryKafkaOffset)
 
   const client = await clientPool.connect()
   const pidKiller = await pidKillerPool.connect()
