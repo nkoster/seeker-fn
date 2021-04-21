@@ -2,8 +2,6 @@
 
 const DEBUG = true
 
-// const consumer = kafka.consumer({ groupId: 'offsetter' + Math.random().toString(20).substr(2) })
-
 module.exports = async (event, context) => {
 
   const groupId = Math.random().toString(20).substr(2)
@@ -90,7 +88,7 @@ module.exports = async (event, context) => {
     DEBUG && console.log('RESULT', result)
   }
 
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise(resolve => setTimeout(resolve, 1000))
   await consumer.disconnect()
   return context
     .headers({ 'Content-type': 'application/json' })
