@@ -3,6 +3,8 @@
 module.exports = async (event, context) => {
 
   const DEBUG = true
+  const DEV_DELAY = 1000
+
   const fs = require('fs')
   
   const config = {
@@ -44,6 +46,10 @@ module.exports = async (event, context) => {
   })
 
   DEBUG && console.log('rows:', data.rows.length)
+
+  if (DEV_DELAY > 0) {
+    await new Promise(resolve => setTimeout(resolve, DEV_DELAY))
+  }
 
   return context
     .headers({ 'Content-type': 'application/json' })
