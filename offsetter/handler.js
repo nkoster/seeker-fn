@@ -43,55 +43,61 @@ module.exports = async (event, context) => {
     if (err) throw err
   })
 
-  try {
-    await consumer.run({
-      autoCommit: false,
-      eachBatchAutoResolve: true,
-      eachBatch: async ({ batch, isStale }) => {
-        if (isStale()) {
-          return
-        }
-        console.log('PARTITION:', batch.partition)
-        let kafkaMessage = {}
-        for (let message of batch.messages) {
-          kafkaMessage = {
-            topic: batch.topic,
-            partition: batch.partition,
-            highWatermark: batch.highWatermark,
-            message: {
-              offset: message.offset,
-              key: message.key.toString(),
-              value: message.value.toString(),
-              headers: message.headers
+  const msg = await new Promise( async (resolve, reject) => {
+    try {
+      await consumer.run({
+        autoCommit: false,
+        eachBatchAutoResolve: true,
+        eachBatch: async ({ batch, isStale }) => {
+          if (isStale()) {
+            return
+          }
+          console.log('PARTITION:', batch.partition)
+          let kafkaMessage = {}
+          for (let message of batch.messages) {
+            kafkaMessage = {
+              topic: batch.topic,
+              partition: batch.partition,
+              highWatermark: batch.highWatermark,
+              message: {
+                offset: message.offset,
+                key: message.key.toString(),
+                value: message.value.toString(),
+                headers: message.headers
+              }
+            }
+            if (offset === message.offset) {
+              DEBUG && console.log('MESSAGE:', kafkaMessage)
+              resolve(kafkaMessage)
+              // fs.writeFileSync(tmpFile, JSON.stringify(kafkaMessage))
+              consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
+              consumer.disconnect()
+              break
             }
           }
-          if (offset === message.offset) {
-            DEBUG && console.log('MESSAGE:', kafkaMessage)
-            fs.writeFileSync(tmpFile, JSON.stringify(kafkaMessage))
-            consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
-            consumer.disconnect()
-            break
-          }
         }
-      }
-    })
-    consumer.seek({ topic, partition, offset })
-  } catch(err) {
-    console.log(err.message)
-  }
+      })
+      consumer.seek({ topic, partition, offset })
+    } catch(err) {
+      reject( {})
+      console.log(err.message)
+    }
+  })
 
-  try {
-    result = fs.readFileSync(tmpFile, 'utf8')
-  } catch (err) {
-    console.log(err.message)
-  } finally {
-    DEBUG && console.log('RESULT', result)
-  }
+  // try {
+  //   result = fs.readFileSync(tmpFile, 'utf8')
+  // } catch (err) {
+  //   console.log(err.message)
+  // } finally {
+  //   DEBUG && console.log('RESULT', result)
+  // }
 
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  // await new Promise(resolve => setTimeout(resolve, 1000))
   await consumer.disconnect()
+
+  console.log('MSG', msg)
   return context
     .headers({ 'Content-type': 'application/json' })
     .status(200)
-    .succeed(JSON.parse(fs.readFileSync(tmpFile, 'utf8')))
+    .succeed(msg)
 }
