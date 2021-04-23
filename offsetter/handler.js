@@ -5,10 +5,8 @@ const DEBUG = true
 module.exports = async (event, context) => {
 
   const groupId = Math.random().toString(20).substr(2)
-  const tmpFile = '/tmp/' + groupId
 
   const { Kafka } = require('kafkajs')
-  const fs = require('fs')
 
   const kafka = new Kafka({
     clientId: 'offsetter',
@@ -37,12 +35,6 @@ module.exports = async (event, context) => {
     console.log(err)
   }
 
-  let result = ''
-
-  fs.open(tmpFile, 'w', err => {
-    if (err) throw err
-  })
-
   const msg = await new Promise( async (resolve, reject) => {
     try {
       await consumer.run({
@@ -69,7 +61,6 @@ module.exports = async (event, context) => {
             if (offset === message.offset) {
               DEBUG && console.log('MESSAGE:', kafkaMessage)
               resolve(kafkaMessage)
-              // fs.writeFileSync(tmpFile, JSON.stringify(kafkaMessage))
               consumer.pause([{ topic: batch.topic, partitions: [batch.partition] }])
               consumer.disconnect()
               break
@@ -84,15 +75,6 @@ module.exports = async (event, context) => {
     }
   })
 
-  // try {
-  //   result = fs.readFileSync(tmpFile, 'utf8')
-  // } catch (err) {
-  //   console.log(err.message)
-  // } finally {
-  //   DEBUG && console.log('RESULT', result)
-  // }
-
-  // await new Promise(resolve => setTimeout(resolve, 1000))
   await consumer.disconnect()
 
   console.log('MSG', msg)
